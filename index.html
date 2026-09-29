@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contador de Ping Pong</title>
+  <meta name="description" content="Placar flip de tênis de mesa: pontos, saque automático, sets e temas." />
+  <link rel="icon" type="image/png" href="./images/favicon.png" />
+  <link rel="apple-touch-icon" href="./images/favicon.png" />
+  <link rel="stylesheet" href="flip_animation.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css" />
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    .hide { display: none !important; }
+    button {
+      display: flex; justify-content: center; height: 35px; align-items: center;
+      margin: 10px 10px; background: none !important; padding: 8px 10px;
+      backdrop-filter: blur(25px); border: none; color: var(--text);
+      cursor: pointer; border-radius: 5px; font-size: 1rem;
+    }
+    button:hover svg { color: var(--text) !important; filter: contrast(0%) !important; transform: scale(1.1); }
+    .slider-container { position: relative; }
+    .time-sliders { display: flex; flex-direction: column; gap: 14px; }
+    .time-row { display: flex; flex-direction: column; gap: 4px; }
+    .time-label {
+      display: flex; justify-content: space-between; align-items: baseline;
+      font-family: "Orbitron", Arial, Helvetica, sans-serif; font-size: 12px;
+      color: var(--text); opacity: 0.7; padding: 0 2px;
+    }
+    .time-label .time-value { font-weight: bold; opacity: 1; font-size: 13px; }
+    #reset-btn i, #swap-serve-btn i { font-size: 30px; }
+
+    /* Placar */
+    .player-info {
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px; margin-top: 1.6rem; margin-bottom: 0;
+    }
+    .player-name {
+      background: transparent; border: none; border-bottom: 2px solid transparent;
+      color: var(--text); font-family: "Orbitron", Arial, sans-serif;
+      font-size: clamp(.9rem, 1.6vw, 1.3rem); text-align: center;
+      width: clamp(6rem, 14vw, 10rem); padding: 2px 0;
+      transition: border-color .2s ease;
+    }
+    .player-name:focus { outline: none; border-bottom-color: var(--text); }
+    .games-column {
+      display: flex; flex-direction: row; align-items: center; justify-content: center;
+      gap: 1.4rem; flex: 0 0 auto; padding: 0 .6rem;
+    }
+    .mini-flip-card-wrap { width: 5rem; }
+    .games-column .flip-card { font-size: 3.2rem; }
+
+    /* Card inteiro de quem vai sacar fica cinza para diferenciar do preto */
+    .holder.serving {
+      background-color: #4a4a4a;
+    }
+    .holder .flip_container { padding-top: 2%; padding-bottom: 0; }
+    .score-buttons { display: flex; justify-content: center; gap: 22px; margin-top: -34px; }
+    .score-btn {
+      width: 4.4rem; height: 4.4rem; border-radius: 50%; border: none;
+      background-color: var(--holder); color: var(--text); font-family: inherit;
+      font-size: 2.4rem; line-height: 1; cursor: pointer;
+      transition: transform .12s ease;
+    }
+    .score-btn:hover { transform: scale(1.1); }
+    .score-btn:active { transform: scale(.92); }
+
+    #best-of-select {
+      border: 2px solid var(--text) !important;
+    }
+    #size_range_slider {
+      width: 100%;
+      margin: 0;
+    }
+
+    .winner-overlay {
+      position: fixed; inset: 0; background-color: rgba(0,0,0,.75);
+      display: flex; align-items: center; justify-content: center; z-index: 30;
+      backdrop-filter: blur(6px);
+    }
+    .winner-card { background-color: var(--holder); border-radius: 1rem; padding: 2.2rem 3rem; text-align: center; color: var(--text); }
+    .winner-label { margin: 0 0 .4rem 0; opacity: .6; font-size: 1rem; font-family: Arial, sans-serif; }
+    .winner-card h1 { margin: 0 0 1.4rem 0; font-family: "Bebas Neue", Arial; font-size: clamp(2rem, 6vw, 3.2rem); }
+    .winner-card button { background-color: var(--text); color: var(--holder); border-radius: .5rem; padding: .6rem 1.4rem; font-size: 1.1rem; margin: 0 auto; }
+
+    /* Aviso de rotação (apenas telas de celular em pé) */
+    .rotate-warning {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background-color: var(--background);
+      color: var(--text);
+      z-index: 9999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.2rem;
+      text-align: center;
+      padding: 2rem;
+    }
+    .rotate-warning i { font-size: 4rem; animation: rotate-hint 1.6s ease-in-out infinite; }
+    .rotate-warning p { font-family: "Orbitron", Arial, sans-serif; font-size: 1.1rem; max-width: 20rem; margin: 0; }
+    @keyframes rotate-hint {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(-90deg); }
+    }
+    @media (orientation: portrait) and (max-width: 900px) {
+      .rotate-warning { display: flex; }
+      .container, #controls, .menu, .winner-overlay { display: none !important; }
+    }
+
+    /* No mobile o tamanho do placar se ajusta sozinho, sem controle manual */
+    @media (max-width: 900px) {
+      #size_range_slider { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="rotate-warning" id="rotate-warning">
+    <i class="ph ph-device-mobile"></i>
+    <p>Coloque seu celular na horizontal</p>
+  </div>
+
+  <div style="z-index: 1 !important" class="container">
+    <div class="holder" id="holder-a">
+      <div class="player-info">
+        <input class="player-name" id="name-a" value="Jogador 1" maxlength="16" />
+      </div>
+      <div class="flip_container">
+        <div class="container-segment">
+          <div class="segment">
+            <div class="flip-card" id="score-a-card">
+              <div class="top">00</div>
+              <div class="bottom">00</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="score-buttons">
+        <button class="score-btn minus" data-player="a" data-delta="-1" aria-label="Diminuir ponto">&minus;</button>
+        <button class="score-btn plus" data-player="a" data-delta="1" aria-label="Adicionar ponto">+</button>
+      </div>
+    </div>
+
+    <div class="games-column">
+      <div class="mini-flip-card-wrap">
+        <div class="flip-card mini-flip-card" id="games-a-card">
+          <div class="top">0</div>
+          <div class="bottom">0</div>
+        </div>
+      </div>
+      <div class="mini-flip-card-wrap">
+        <div class="flip-card mini-flip-card" id="games-b-card">
+          <div class="top">0</div>
+          <div class="bottom">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="holder" id="holder-b">
+      <div class="player-info">
+        <input class="player-name" id="name-b" value="Jogador 2" maxlength="16" />
+      </div>
+      <div class="flip_container">
+        <div class="container-segment">
+          <div class="segment">
+            <div class="flip-card" id="score-b-card">
+              <div class="top">00</div>
+              <div class="bottom">00</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="score-buttons">
+        <button class="score-btn minus" data-player="b" data-delta="-1" aria-label="Diminuir ponto">&minus;</button>
+        <button class="score-btn plus" data-player="b" data-delta="1" aria-label="Adicionar ponto">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="z-index: 3 !important" id="controls">
+    <div style="width: 100%; display: flex; gap: 20px; flex-direction: column">
+      <div class="themes_container">
+        <svg class="default_theme" width="45" height="45" viewBox="0 0 45 45" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.9773 44.9545C25.8677 44.9545 28.7298 44.3852 31.4002 43.2791C34.0706 42.173 36.497 40.5517 38.5408 38.5079C40.5846 36.4641 42.2059 34.0377 43.312 31.3673C44.4181 28.6969 44.9874 25.8348 44.9874 22.9444C44.9874 20.054 44.4181 17.1919 43.312 14.5215C42.2059 11.8511 40.5846 9.42476 38.5408 7.38093C36.497 5.33711 34.0706 3.71585 31.4002 2.60974C28.7298 1.50363 25.8677 0.934325 22.9773 0.934325L22.9773 22.9444L22.9773 44.9545Z" fill="#b7b7b7"/><path d="M22.9775 0.934155C20.0871 0.934155 17.225 1.50346 14.5546 2.60957C11.8842 3.71568 9.45784 5.33694 7.41402 7.38076C5.37019 9.42459 3.74894 11.851 2.64283 14.5214C1.53672 17.1917 0.967408 20.0538 0.967408 22.9443C0.967408 25.8347 1.53672 28.6968 2.64283 31.3672C3.74894 34.0375 5.37019 36.4639 7.41402 38.5077C9.45784 40.5516 11.8842 42.1728 14.5546 43.2789C17.225 44.385 20.0871 44.9543 22.9775 44.9543L22.9775 22.9443L22.9775 0.934155Z" fill="var(--theme-secondary)"/></svg>
+        <svg class="theme1" width="45" height="45" viewBox="0 0 45 45" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.9773 44.9545C25.8677 44.9545 28.7298 44.3852 31.4002 43.2791C34.0706 42.173 36.497 40.5517 38.5408 38.5079C40.5846 36.4641 42.2059 34.0377 43.312 31.3673C44.4181 28.6969 44.9874 25.8348 44.9874 22.9444C44.9874 20.054 44.4181 17.1919 43.312 14.5215C42.2059 11.8511 40.5846 9.42476 38.5408 7.38093C36.497 5.33711 34.0706 3.71585 31.4002 2.60974C28.7298 1.50363 25.8677 0.934325 22.9773 0.934325L22.9773 22.9444L22.9773 44.9545Z" fill="#D6F5D6"/><path d="M22.9775 0.934155C20.0871 0.934155 17.225 1.50346 14.5546 2.60957C11.8842 3.71568 9.45784 5.33694 7.41402 7.38076C5.37019 9.42459 3.74894 11.851 2.64283 14.5214C1.53672 17.1917 0.967408 20.0538 0.967408 22.9443C0.967408 25.8347 1.53672 28.6968 2.64283 31.3672C3.74894 34.0375 5.37019 36.4639 7.41402 38.5077C9.45784 40.5516 11.8842 42.1728 14.5546 43.2789C17.225 44.385 20.0871 44.9543 22.9775 44.9543L22.9775 22.9443L22.9775 0.934155Z" fill="var(--theme-secondary)"/></svg>
+        <svg class="theme2" width="45" height="45" viewBox="0 0 45 45" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.9773 44.9545C25.8677 44.9545 28.7298 44.3852 31.4002 43.2791C34.0706 42.173 36.497 40.5517 38.5408 38.5079C40.5846 36.4641 42.2059 34.0377 43.312 31.3673C44.4181 28.6969 44.9874 25.8348 44.9874 22.9444C44.9874 20.054 44.4181 17.1919 43.312 14.5215C42.2059 11.8511 40.5846 9.42476 38.5408 7.38093C36.497 5.33711 34.0706 3.71585 31.4002 2.60974C28.7298 1.50363 25.8677 0.934325 22.9773 0.934325L22.9773 22.9444L22.9773 44.9545Z" fill="#CED4FF"/><path d="M22.9775 0.934155C20.0871 0.934155 17.225 1.50346 14.5546 2.60957C11.8842 3.71568 9.45784 5.33694 7.41402 7.38076C5.37019 9.42459 3.74894 11.851 2.64283 14.5214C1.53672 17.1917 0.967408 20.0538 0.967408 22.9443C0.967408 25.8347 1.53672 28.6968 2.64283 31.3672C3.74894 34.0375 5.37019 36.4639 7.41402 38.5077C9.45784 40.5516 11.8842 42.1728 14.5546 43.2789C17.225 44.385 20.0871 44.9543 22.9775 44.9543L22.9775 22.9443L22.9775 0.934155Z" fill="var(--theme-secondary)"/></svg>
+        <svg class="theme3" width="45" height="45" viewBox="0 0 45 45" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.9773 44.9545C25.8677 44.9545 28.7298 44.3852 31.4002 43.2791C34.0706 42.173 36.497 40.5517 38.5408 38.5079C40.5846 36.4641 42.2059 34.0377 43.312 31.3673C44.4181 28.6969 44.9874 25.8348 44.9874 22.9444C44.9874 20.054 44.4181 17.1919 43.312 14.5215C42.2059 11.8511 40.5846 9.42476 38.5408 7.38093C36.497 5.33711 34.0706 3.71585 31.4002 2.60974C28.7298 1.50363 25.8677 0.934325 22.9773 0.934325L22.9773 22.9444L22.9773 44.9545Z" fill="#FFA7A7"/><path d="M22.9775 0.934155C20.0871 0.934155 17.225 1.50346 14.5546 2.60957C11.8842 3.71568 9.45784 5.33694 7.41402 7.38076C5.37019 9.42459 3.74894 11.851 2.64283 14.5214C1.53672 17.1917 0.967408 20.0538 0.967408 22.9443C0.967408 25.8347 1.53672 28.6968 2.64283 31.3672C3.74894 34.0375 5.37019 36.4639 7.41402 38.5077C9.45784 40.5516 11.8842 42.1728 14.5546 43.2789C17.225 44.385 20.0871 44.9543 22.9775 44.9543L22.9775 22.9443L22.9775 0.934155Z" fill="var(--theme-secondary)"/></svg>
+        <svg class="theme4" width="45" height="45" viewBox="0 0 45 45" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.9773 44.9545C25.8677 44.9545 28.7298 44.3852 31.4002 43.2791C34.0706 42.173 36.497 40.5517 38.5408 38.5079C40.5846 36.4641 42.2059 34.0377 43.312 31.3673C44.4181 28.6969 44.9874 25.8348 44.9874 22.9444C44.9874 20.054 44.4181 17.1919 43.312 14.5215C42.2059 11.8511 40.5846 9.42476 38.5408 7.38093C36.497 5.33711 34.0706 3.71585 31.4002 2.60974C28.7298 1.50363 25.8677 0.934325 22.9773 0.934325L22.9773 22.9444L22.9773 44.9545Z" fill="#FFC57C"/><path d="M22.9775 0.934155C20.0871 0.934155 17.225 1.50346 14.5546 2.60957C11.8842 3.71568 9.45784 5.33694 7.41402 7.38076C5.37019 9.42459 3.74894 11.851 2.64283 14.5214C1.53672 17.1917 0.967408 20.0538 0.967408 22.9443C0.967408 25.8347 1.53672 28.6968 2.64283 31.3672C3.74894 34.0375 5.37019 36.4639 7.41402 38.5077C9.45784 40.5516 11.8842 42.1728 14.5546 43.2789C17.225 44.385 20.0871 44.9543 22.9775 44.9543L22.9775 22.9443L22.9775 0.934155Z" fill="var(--theme-secondary)"/></svg>
+        <svg class="theme5" width="45" height="45" viewBox="0 0 45 45" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.9773 44.9545C25.8677 44.9545 28.7298 44.3852 31.4002 43.2791C34.0706 42.173 36.497 40.5517 38.5408 38.5079C40.5846 36.4641 42.2059 34.0377 43.312 31.3673C44.4181 28.6969 44.9874 25.8348 44.9874 22.9444C44.9874 20.054 44.4181 17.1919 43.312 14.5215C42.2059 11.8511 40.5846 9.42476 38.5408 7.38093C36.497 5.33711 34.0706 3.71585 31.4002 2.60974C28.7298 1.50363 25.8677 0.934325 22.9773 0.934325L22.9773 22.9444L22.9773 44.9545Z" fill="#CCE1FF"/><path d="M22.9775 0.934155C20.0871 0.934155 17.225 1.50346 14.5546 2.60957C11.8842 3.71568 9.45784 5.33694 7.41402 7.38076C5.37019 9.42459 3.74894 11.851 2.64283 14.5214C1.53672 17.1917 0.967408 20.0538 0.967408 22.9443C0.967408 25.8347 1.53672 28.6968 2.64283 31.3672C3.74894 34.0375 5.37019 36.4639 7.41402 38.5077C9.45784 40.5516 11.8842 42.1728 14.5546 43.2789C17.225 44.385 20.0871 44.9543 22.9775 44.9543L22.9775 22.9443L22.9775 0.934155Z" fill="var(--theme-secondary)"/></svg>
+        <svg class="theme6" width="45" height="45" viewBox="0 0 45 45" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.9773 44.9545C25.8677 44.9545 28.7298 44.3852 31.4002 43.2791C34.0706 42.173 36.497 40.5517 38.5408 38.5079C40.5846 36.4641 42.2059 34.0377 43.312 31.3673C44.4181 28.6969 44.9874 25.8348 44.9874 22.9444C44.9874 20.054 44.4181 17.1919 43.312 14.5215C42.2059 11.8511 40.5846 9.42476 38.5408 7.38093C36.497 5.33711 34.0706 3.71585 31.4002 2.60974C28.7298 1.50363 25.8677 0.934325 22.9773 0.934325L22.9773 22.9444L22.9773 44.9545Z" fill="#FFDB57"/><path d="M22.9775 0.934155C20.0871 0.934155 17.225 1.50346 14.5546 2.60957C11.8842 3.71568 9.45784 5.33694 7.41402 7.38076C5.37019 9.42459 3.74894 11.851 2.64283 14.5214C1.53672 17.1917 0.967408 20.0538 0.967408 22.9443C0.967408 25.8347 1.53672 28.6968 2.64283 31.3672C3.74894 34.0375 5.37019 36.4639 7.41402 38.5077C9.45784 40.5516 11.8842 42.1728 14.5546 43.2789C17.225 44.385 20.0871 44.9543 22.9775 44.9543L22.9775 22.9443L22.9775 0.934155Z" fill="var(--theme-secondary)"/></svg>
+        <svg class="theme7" width="45" height="45" viewBox="0 0 45 45" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.9773 44.9545C25.8677 44.9545 28.7298 44.3852 31.4002 43.2791C34.0706 42.173 36.497 40.5517 38.5408 38.5079C40.5846 36.4641 42.2059 34.0377 43.312 31.3673C44.4181 28.6969 44.9874 25.8348 44.9874 22.9444C44.9874 20.054 44.4181 17.1919 43.312 14.5215C42.2059 11.8511 40.5846 9.42476 38.5408 7.38093C36.497 5.33711 34.0706 3.71585 31.4002 2.60974C28.7298 1.50363 25.8677 0.934325 22.9773 0.934325L22.9773 22.9444L22.9773 44.9545Z" fill="#F8E8FF"/><path d="M22.9775 0.934155C20.0871 0.934155 17.225 1.50346 14.5546 2.60957C11.8842 3.71568 9.45784 5.33694 7.41402 7.38076C5.37019 9.42459 3.74894 11.851 2.64283 14.5214C1.53672 17.1917 0.967408 20.0538 0.967408 22.9443C0.967408 25.8347 1.53672 28.6968 2.64283 31.3672C3.74894 34.0375 5.37019 36.4639 7.41402 38.5077C9.45784 40.5516 11.8842 42.1728 14.5546 43.2789C17.225 44.385 20.0871 44.9543 22.9775 44.9543L22.9775 22.9443L22.9775 0.934155Z" fill="var(--theme-secondary)"/></svg>
+        <svg class="theme8" width="45" height="45" viewBox="0 0 45 45" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.9773 44.9545C25.8677 44.9545 28.7298 44.3852 31.4002 43.2791C34.0706 42.173 36.497 40.5517 38.5408 38.5079C40.5846 36.4641 42.2059 34.0377 43.312 31.3673C44.4181 28.6969 44.9874 25.8348 44.9874 22.9444C44.9874 20.054 44.4181 17.1919 43.312 14.5215C42.2059 11.8511 40.5846 9.42476 38.5408 7.38093C36.497 5.33711 34.0706 3.71585 31.4002 2.60974C28.7298 1.50363 25.8677 0.934325 22.9773 0.934325L22.9773 22.9444L22.9773 44.9545Z" fill="#D0FFE9"/><path d="M22.9775 0.934155C20.0871 0.934155 17.225 1.50346 14.5546 2.60957C11.8842 3.71568 9.45784 5.33694 7.41402 7.38076C5.37019 9.42459 3.74894 11.851 2.64283 14.5214C1.53672 17.1917 0.967408 20.0538 0.967408 22.9443C0.967408 25.8347 1.53672 28.6968 2.64283 31.3672C3.74894 34.0375 5.37019 36.4639 7.41402 38.5077C9.45784 40.5516 11.8842 42.1728 14.5546 43.2789C17.225 44.385 20.0871 44.9543 22.9775 44.9543L22.9775 22.9443L22.9775 0.934155Z" fill="var(--theme-secondary)"/></svg>
+      </div>
+
+      <div style="display: flex; justify-content: center; width: 100%; gap: 20px; margin-bottom: 20px">
+        <button id="swap-serve-btn" style="margin: 0; padding: 0; height: fit-content; display: flex; align-items: center; justify-content: center; margin-right: 4px" title="Trocar saque manualmente">
+          <i class="ph ph-arrows-left-right" style="opacity: 80%"></i>
+        </button>
+        <button id="reset-btn" style="margin: 0; padding: 0; height: fit-content; display: flex; align-items: center; justify-content: center" title="Reiniciar partida">
+          <i class="ph ph-arrow-counter-clockwise" style="opacity: 80%"></i>
+        </button>
+      </div>
+
+      <div class="time-sliders">
+        <div class="time-row">
+          <div class="time-label"><span>Melhor de</span></div>
+          <select id="best-of-select" style="width: 100%; background: var(--holder); color: var(--text); border: none; border-radius: 6px; padding: 6px; font-family: 'Orbitron', Arial, sans-serif;">
+            <option value="1">1 set</option>
+            <option value="3" selected>3 sets</option>
+            <option value="5">5 sets</option>
+            <option value="7">7 sets</option>
+          </select>
+        </div>
+      </div>
+
+      <input type="range" id="size_range_slider" min="25" max="120" step="10" title="Size" value="65" />
+    </div>
+
+    <div class="setting-icons-container" style="grid-template-columns: repeat(2, 1fr)">
+      <i class="themes_toggle ph-fill ph-palette" style="font-size: 27px" title="Themes"></i>
+      <svg style="display: none; transform: scale(1)" id="themes_close_toggle" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+      <i title="Full Screen" class="full ph-fill ph-corners-out" style="font-size: 28px"></i>
+    </div>
+
+    <a class="menu-credit" href="https://romeuportfolio.vercel.app" target="_blank" rel="noopener">powered by<br />trapporomeu.com.br</a>
+  </div>
+
+  <div class="menu">
+    <a href="./index.html" class="icon_link"><i class="ph ph-house"></i></a>
+    <i style="display: block; cursor: pointer; font-size: 32px" id="menu_toggle" class="ph ph-list"></i>
+    <svg style="display: none; cursor: pointer" id="menu_close" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+  </div>
+
+  <div class="winner-overlay hide" id="winner-overlay">
+    <div class="winner-card">
+      <p class="winner-label">Vencedor da partida</p>
+      <h1 id="winner-name">—</h1>
+      <button id="winner-close-btn">Nova partida</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

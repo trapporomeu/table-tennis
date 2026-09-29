@@ -141,8 +141,7 @@ function checkGameWinner() {
   if (!won) return;
   const winner = a > b ? "a" : "b";
   state.games[winner]++;
-  const gamesNeeded = Math.floor(state.bestOf / 2) + 1;
-  if (state.games[winner] >= gamesNeeded) {
+  if (state.games[winner] >= state.bestOf) {
     showMatchWinner(winner);
   } else {
     state.firstServer = otherPlayer(state.firstServer);

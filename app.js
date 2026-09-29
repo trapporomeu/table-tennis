@@ -29,6 +29,50 @@ const state = {
   bestOf: 3,
 };
 
+/* ---------- Histórico da partida: sobrevive a recarregar a página, some ao fechar a aba ---------- */
+const STORAGE_KEY = "ping_pong_match";
+function saveState() {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+      points: state.points,
+      games: state.games,
+      firstServer: state.firstServer,
+      manualServer: state.manualServer,
+      bestOf: state.bestOf,
+      nameA: nameA.value,
+      nameB: nameB.value,
+      matchOver: !winnerOverlay.classList.contains("hide"),
+      winner: winnerName.textContent,
+    }));
+  } catch (e) { /* sessionStorage indisponível */ }
+}
+function loadState() {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const saved = JSON.parse(raw);
+    state.points = saved.points || state.points;
+    state.games = saved.games || state.games;
+    state.firstServer = saved.firstServer || state.firstServer;
+    state.manualServer = saved.manualServer || null;
+    state.bestOf = saved.bestOf || state.bestOf;
+    if (saved.nameA) nameA.value = saved.nameA;
+    if (saved.nameB) nameB.value = saved.nameB;
+    bestOfSelect.value = String(state.bestOf);
+    paintScoreImmediate(scoreACard, String(state.points.a).padStart(2, "0"));
+    paintScoreImmediate(scoreBCard, String(state.points.b).padStart(2, "0"));
+    paintScoreImmediate(gamesACard, String(state.games.a));
+    paintScoreImmediate(gamesBCard, String(state.games.b));
+    if (saved.matchOver) {
+      winnerName.textContent = saved.winner || "";
+      winnerOverlay.classList.remove("hide");
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 /* ---------- Sound: WebAudio synthesized flip tick + fanfare de vitória ---------- */
 let audioCtx = null;
 function ensureAudio() {
@@ -120,6 +164,7 @@ function render() {
   const server = currentServer();
   holderA.classList.toggle("serving", server === "a");
   holderB.classList.toggle("serving", server === "b");
+  saveState();
 }
 
 /* ---------- Pontuação ---------- */
@@ -186,7 +231,10 @@ resetBtn.addEventListener("click", resetMatch);
 winnerCloseBtn.addEventListener("click", resetMatch);
 bestOfSelect.addEventListener("change", () => {
   state.bestOf = parseInt(bestOfSelect.value, 10);
+  saveState();
 });
+nameA.addEventListener("input", saveState);
+nameB.addEventListener("input", saveState);
 
 /* ---------- Size slider (desativado no mobile: o layout se ajusta sozinho) ---------- */
 const isMobile = window.matchMedia("(max-width: 900px)").matches;
@@ -303,9 +351,12 @@ document.querySelector(".full").onclick = () => {
 /* ---------- Init ---------- */
 applyStoredThemeMode();
 (function init() {
-  paintScoreImmediate(scoreACard, "00");
-  paintScoreImmediate(scoreBCard, "00");
-  paintScoreImmediate(gamesACard, "0");
-  paintScoreImmediate(gamesBCard, "0");
+  const hasSavedMatch = loadState();
+  if (!hasSavedMatch) {
+    paintScoreImmediate(scoreACard, "00");
+    paintScoreImmediate(scoreBCard, "00");
+    paintScoreImmediate(gamesACard, "0");
+    paintScoreImmediate(gamesBCard, "0");
+  }
   render();
 })();
